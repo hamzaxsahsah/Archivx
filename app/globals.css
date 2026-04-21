@@ -1,0 +1,184 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #0d0f14;
+}
+
+/* Thin dark scrollbar — keeps layout stable, less visual noise */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1e2330 transparent;
+}
+*::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: #1e2330;
+  border-radius: 9999px;
+}
+
+/* iOS / PWA: avoid tap highlight flash; improve focus for keyboard users */
+@media (hover: hover) {
+  button,
+  a {
+    @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent/80;
+  }
+}
+
+/* ──────────────────────────────────────────
+   Skip link — visible only on keyboard focus
+────────────────────────────────────────── */
+.skip-to-main {
+  @apply sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:font-display focus:text-sm focus:font-semibold focus:text-bg focus:shadow-glow-accent focus:outline-none;
+}
+
+/* ──────────────────────────────────────────
+   Glass panels
+────────────────────────────────────────── */
+.glass-panel {
+  @apply rounded-2xl border border-white/5 bg-white/[0.03] p-4 backdrop-blur-xl sm:p-6;
+}
+
+.glass-panel-sm {
+  @apply rounded-xl border border-white/5 bg-white/[0.03] p-4 backdrop-blur-xl;
+}
+
+/* ──────────────────────────────────────────
+   Buttons
+────────────────────────────────────────── */
+
+/* Primary: filled accent, glowing */
+.btn-primary {
+  @apply inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 font-display text-sm font-semibold text-bg shadow-glow-accent transition hover:brightness-110 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+}
+
+/* Ghost: bordered, low-key until hover */
+.btn-ghost {
+  @apply inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 font-display text-sm text-zinc-300 transition hover:border-white/20 hover:bg-white/5 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40;
+}
+
+/* Danger ghost */
+.btn-danger {
+  @apply inline-flex items-center gap-2 rounded-lg border border-red-500/40 px-3 py-2 font-mono text-sm text-red-300 transition hover:bg-red-500/10 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40;
+}
+
+/* ──────────────────────────────────────────
+   Form controls
+────────────────────────────────────────── */
+.form-input {
+  @apply rounded-lg border border-border bg-surface px-3 py-2 font-display text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-accent/50 focus:ring-2 focus:ring-accent/20;
+}
+
+/* ──────────────────────────────────────────
+   Page section header
+────────────────────────────────────────── */
+.page-header {
+  @apply space-y-1;
+}
+
+/* ──────────────────────────────────────────
+   Decorative dot-grid background overlay
+────────────────────────────────────────── */
+.bg-grid {
+  background-image: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.045) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+}
+
+/* ──────────────────────────────────────────
+   Metallic shimmer (achievement unlock)
+────────────────────────────────────────── */
+.metallic-shimmer {
+  background: linear-gradient(
+    110deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.12) 45%,
+    rgba(255, 255, 255, 0) 90%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2.4s linear infinite;
+}
+
+/* ──────────────────────────────────────────
+   HUD panel — corner-cut gaming frame
+────────────────────────────────────────── */
+.hud-panel {
+  @apply relative rounded-lg border border-accent/20 bg-surface p-4;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 12px) 0,
+    100% 12px,
+    100% 100%,
+    12px 100%,
+    0 calc(100% - 12px)
+  );
+}
+.hud-panel::before {
+  content: "";
+  @apply pointer-events-none absolute inset-0;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 180, 216, 0.06) 0%,
+    transparent 50%
+  );
+}
+
+/* ──────────────────────────────────────────
+   CRT scanline overlay (decorative)
+────────────────────────────────────────── */
+.scanlines::after {
+  content: "";
+  @apply pointer-events-none absolute inset-0 rounded-[inherit];
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+  z-index: 1;
+}
+
+/* ──────────────────────────────────────────
+   Neon text glows
+────────────────────────────────────────── */
+.neon-accent {
+  color: #00b4d8;
+  text-shadow:
+    0 0 6px rgba(0, 180, 216, 0.7),
+    0 0 18px rgba(0, 180, 216, 0.4);
+}
+
+.neon-gold {
+  color: #f4c542;
+  text-shadow:
+    0 0 6px rgba(244, 197, 66, 0.7),
+    0 0 20px rgba(244, 197, 66, 0.4);
+}
+
+/* ──────────────────────────────────────────
+   XP gradient progress bar fill
+────────────────────────────────────────── */
+.xp-fill {
+  background: linear-gradient(
+    90deg,
+    #00b4d8 0%,
+    #0ef 60%,
+    #f4c542 100%
+  );
+  box-shadow: 0 0 8px rgba(0, 180, 216, 0.5);
+}
