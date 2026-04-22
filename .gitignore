@@ -19,6 +19,9 @@
 .env*.local
 .env
 
+# Claude Code
+.claude/
+
 # OAuth / API secrets (never commit)
 /credentials/
 

@@ -10,5 +10,10 @@ service cloud.firestore {
     match /steamLinkStates/{id} {
       allow read, write: if false;
     }
+
+    /* Friend chat — server (Admin SDK) only; clients use /api/friends/... */
+    match /friendChats/{pairId}/messages/{messageId} {
+      allow read, write: if false;
+    }
   }
 }

@@ -7,6 +7,7 @@ import { SteamLinkButton } from "@/components/SteamLinkButton";
 import { RequireAuth } from "@/components/RequireAuth";
 import { useSteamStore } from "@/lib/store";
 import Image from "next/image";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 export default function SettingsPage() {
@@ -33,6 +34,7 @@ function SettingsInner() {
     personaname: string;
   } | null>(null);
   const [unlinking, setUnlinking] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!profile?.steamId || !user) {
@@ -86,6 +88,35 @@ function SettingsInner() {
             <p className="font-display text-base text-white">{user?.displayName}</p>
             <p className="font-mono text-sm text-zinc-500">{user?.email}</p>
           </div>
+        </div>
+      </section>
+
+      <section className="glass-panel space-y-4">
+        <h2 className="font-display text-lg font-semibold text-white">Friends</h2>
+        <p className="text-sm text-zinc-500">
+          Share this ID so others can send you a friend request on the{" "}
+          <Link href="/friends" className="text-accent underline">
+            Friends
+          </Link>{" "}
+          page.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <code className="max-w-full break-all rounded-lg border border-border bg-bg px-3 py-2 font-mono text-xs text-zinc-300">
+            {user?.uid ?? "—"}
+          </code>
+          <button
+            type="button"
+            className="btn-ghost py-2 text-xs"
+            disabled={!user?.uid}
+            onClick={async () => {
+              if (!user?.uid) return;
+              await navigator.clipboard.writeText(user.uid);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            }}
+          >
+            {copied ? "Copied" : "Copy ID"}
+          </button>
         </div>
       </section>
 
