@@ -1,8 +1,19 @@
-// Netlify build plugin — prints MongoDB Atlas connection details (host + IPs)
-// on every deploy so you can confirm which cluster the app is pointing at.
-// MongoDB is optional in this project: missing MONGODB_URI logs a warning only.
+// Netlify build plugin — validates and prints MongoDB connection details on every deploy.
+// Fails the build if a local/Docker URI is detected on a serverless host.
 
 const dns = require("dns").promises;
+
+const LOCAL_PATTERNS = [
+  /^127\./,
+  /^localhost/i,
+  /^0\.0\.0\.0/,
+  /^::1$/,
+  /^mongodb:\/\/(localhost|127\.|0\.0\.0\.0)/i,
+];
+
+function isLocalUri(uri) {
+  return LOCAL_PATTERNS.some((re) => re.test(uri));
+}
 
 function parseMongoHost(uri) {
   const isSrv = uri.startsWith("mongodb+srv://");
@@ -10,9 +21,7 @@ function parseMongoHost(uri) {
   const withoutScheme = uri.slice(scheme.length);
   const atIdx = withoutScheme.indexOf("@");
   const afterCreds = atIdx >= 0 ? withoutScheme.slice(atIdx + 1) : withoutScheme;
-  // strip /dbname and ?querystring
   const hostPart = afterCreds.split("/")[0].split("?")[0];
-  // for non-srv, take first host and strip port
   if (!isSrv) {
     const firstHost = hostPart.split(",")[0];
     const portIdx = firstHost.lastIndexOf(":");
@@ -24,13 +33,10 @@ function parseMongoHost(uri) {
 async function resolveHosts(isSrv, host) {
   const lines = [];
   if (isSrv) {
-    // Atlas SRV record expands to the actual shard hostnames
     let srvRecords = null;
     try {
       srvRecords = await dns.resolveSrv(`_mongodb._tcp.${host}`);
-    } catch {
-      // fallback: resolve the SRV hostname itself
-    }
+    } catch { /* fallback below */ }
     if (srvRecords && srvRecords.length > 0) {
       for (const rec of srvRecords.slice(0, 4)) {
         try {
@@ -42,7 +48,6 @@ async function resolveHosts(isSrv, host) {
       }
       return lines;
     }
-    // no SRV — fall through to A record
   }
   try {
     const ips = await dns.resolve4(host);
@@ -61,21 +66,45 @@ async function resolveHosts(isSrv, host) {
 module.exports = {
   async onPreBuild({ utils }) {
     const uri = process.env.MONGODB_URI?.trim();
+    const sep = "─".repeat(58);
 
-    const sep = "─".repeat(56);
     console.log(`\n${sep}`);
     console.log("  MongoDB status");
     console.log(sep);
 
     if (!uri) {
       console.log("  ⚠  MONGODB_URI is not set.");
-      console.log("     The app will run using Firestore only (no cache layer).");
-      console.log("     To enable MongoDB Atlas:");
-      console.log("       1. Netlify dashboard → Integrations → MongoDB Atlas");
-      console.log("       2. Connect your Atlas cluster — MONGODB_URI is injected");
-      console.log("          automatically into this site's environment variables.");
+      console.log("     App will run on Firestore only (no cache layer).");
+      console.log("     To add MongoDB Atlas:");
+      console.log("       Netlify dashboard → Integrations → MongoDB Atlas");
       console.log(`${sep}\n`);
-      return; // MongoDB is optional — do not fail the build
+      return; // optional — do not fail the build
+    }
+
+    // Detect local/Docker URIs — they will never work on serverless
+    if (isLocalUri(uri)) {
+      utils.build.failBuild(
+        [
+          "",
+          sep,
+          "  ✗  MONGODB_URI points to a local / Docker address.",
+          `     Detected: ${uri.replace(/:\/\/[^@]*@/, "://<redacted>@")}`,
+          "",
+          "  Netlify is serverless — there is no MongoDB process at 127.0.0.1.",
+          "  Every DB call would time out and slow every request by 5 seconds.",
+          "",
+          "  Fix — use MongoDB Atlas (free M0 cluster):",
+          "    1. https://www.mongodb.com/atlas  →  create a free cluster",
+          "    2. Cluster → Connect → Drivers → copy the mongodb+srv:// URI",
+          "    3. Netlify dashboard → Site → Environment variables",
+          "       Set MONGODB_URI = mongodb+srv://user:pass@cluster.mongodb.net/achievhq",
+          "    4. Redeploy.",
+          "",
+          "  Or remove MONGODB_URI entirely to run on Firestore only.",
+          sep,
+        ].join("\n"),
+      );
+      return;
     }
 
     let parsed;
@@ -97,7 +126,6 @@ module.exports = {
 
     const hostLines = await resolveHosts(isSrv, host);
     for (const line of hostLines) console.log(line);
-
     console.log(`${sep}\n`);
   },
 };
