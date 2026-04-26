@@ -2,58 +2,83 @@
   command   = "npm run build"
   publish   = ".next"
 
+# ---------------------------------------------------------------------------
+# Plugins
+# ---------------------------------------------------------------------------
+
+# Official Next.js adapter — handles SSR, ISR, image optimisation on Netlify
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+# In-repo plugin — resolves MongoDB Atlas hostnames to IPs and prints them
+# in every deploy log so you can confirm which cluster the app is pointing at.
+[[plugins]]
+  package = "./netlify/plugins/mongo-status"
+
+# ---------------------------------------------------------------------------
+# Build environment
+# ---------------------------------------------------------------------------
 [build.environment]
   NODE_VERSION            = "20"
   NEXT_TELEMETRY_DISABLED = "1"
-  # NEXT_PUBLIC_* vars are intentionally baked into the client bundle.
-  # GOOGLE_OAUTH_AUTH_* values are standard public Google OAuth URLs that
-  # also appear verbatim inside node_modules/google-auth-library.
-  # Neither constitutes a leaked secret — tell Netlify to skip them.
+
+  # NEXT_PUBLIC_* vars are baked into the browser bundle at build time —
+  # they are not secrets. GOOGLE_OAUTH_AUTH_* URLs appear verbatim in
+  # node_modules/google-auth-library. MONGODB_URI looks like a credential
+  # but must be readable during the build for the mongo-status plugin.
+  # Tell Netlify's secrets scanner to skip all of these.
   SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_FIREBASE_API_KEY,NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,NEXT_PUBLIC_FIREBASE_PROJECT_ID,NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,NEXT_PUBLIC_FIREBASE_APP_ID,NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID,NEXT_PUBLIC_APP_URL,NEXT_PUBLIC_VAPID_PUBLIC_KEY,GOOGLE_OAUTH_AUTH_URI,GOOGLE_OAUTH_TOKEN_URI,GOOGLE_OAUTH_AUTH_PROVIDER_X509_CERT_URL,GOOGLE_OAUTH_PROJECT_ID,GOOGLE_OAUTH_CLIENT_ID,MONGODB_URI,MONGODB_DB"
 
 # ---------------------------------------------------------------------------
 # Serverless function config
-# On Netlify the default timeout is 10 s (free) / 26 s (Pro).
-# MongoDB calls go to Atlas (external network hop) — give them breathing room.
+# nft (Next Transformed Files) correctly traces mongodb, firebase-admin, etc.
 # ---------------------------------------------------------------------------
 [functions]
-  node_bundler        = "nft"
-  included_files      = ["public/**"]
+  node_bundler   = "nft"
+  included_files = ["public/**"]
 
 # ---------------------------------------------------------------------------
-# Required environment variables
-# Set actual values in: Netlify dashboard → Site → Environment variables
-# NEVER commit real secrets here.
+# MongoDB Atlas — auto-provisioning via Netlify Integration
 # ---------------------------------------------------------------------------
-# Firebase (public — baked into the browser bundle at build time)
-# NEXT_PUBLIC_FIREBASE_API_KEY          = set in Netlify dashboard
-# NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN      = set in Netlify dashboard
-# NEXT_PUBLIC_FIREBASE_PROJECT_ID       = set in Netlify dashboard
-# NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET   = set in Netlify dashboard
-# NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID = set in Netlify dashboard
-# NEXT_PUBLIC_FIREBASE_APP_ID           = set in Netlify dashboard
-# NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID   = set in Netlify dashboard (optional)
-
+# HOW TO CONNECT YOUR ATLAS CLUSTER (one-time setup):
+#   1. Netlify dashboard → your site → Integrations
+#   2. Search "MongoDB Atlas" → click Connect
+#   3. Log in to Atlas, choose / create a free M0 cluster
+#   4. Netlify automatically injects MONGODB_URI and MONGODB_DB into
+#      this site's environment variables — no manual copy-paste needed.
+#   5. Redeploy — the mongo-status plugin will print the cluster IPs.
+#
+# IMPORTANT: MONGODB_URI must be a mongodb+srv:// Atlas URI (not a local
+# Docker URI). The app falls back to Firestore-only if MONGODB_URI is unset.
+#
+# ---------------------------------------------------------------------------
+# All other required environment variables — set these in:
+#   Netlify dashboard → Site → Environment variables
+# ---------------------------------------------------------------------------
+#
+# Firebase (public — baked into browser bundle at build time)
+#   NEXT_PUBLIC_FIREBASE_API_KEY
+#   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+#   NEXT_PUBLIC_FIREBASE_PROJECT_ID
+#   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+#   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+#   NEXT_PUBLIC_FIREBASE_APP_ID
+#   NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID       (optional)
+#
 # App URL  (no trailing slash, e.g. https://yourapp.netlify.app)
-# NEXT_PUBLIC_APP_URL                   = set in Netlify dashboard
-
+#   NEXT_PUBLIC_APP_URL
+#
 # Steam
-# STEAM_API_KEY                         = set in Netlify dashboard
-
-# Firebase Admin SDK  (paste full JSON stringified to one line)
-# FIREBASE_SERVICE_ACCOUNT_JSON         = set in Netlify dashboard
-
-# Web Push / VAPID
-# NEXT_PUBLIC_VAPID_PUBLIC_KEY          = set in Netlify dashboard
-# VAPID_PRIVATE_KEY                     = set in Netlify dashboard
-# VAPID_CONTACT                         = set in Netlify dashboard (mailto: or https:)
-
-# MongoDB Atlas  (use Atlas connection string, NOT a local Docker URI)
-# Background Steam sync is automatically disabled on Netlify because
-# fire-and-forget promises are truncated after the response is sent.
-# MongoDB is still used for dashboard/profile caching on each request.
-# MONGODB_URI  = set in Netlify dashboard (mongodb+srv://...@cluster.mongodb.net/...)
-# MONGODB_DB   = achievhq
+#   STEAM_API_KEY
+#
+# Firebase Admin SDK  (full JSON, one line)
+#   FIREBASE_SERVICE_ACCOUNT_JSON
+#
+# Web Push / VAPID  (generate: npx web-push generate-vapid-keys)
+#   NEXT_PUBLIC_VAPID_PUBLIC_KEY
+#   VAPID_PRIVATE_KEY
+#   VAPID_CONTACT                             (mailto: or https:)
+#
+# MongoDB Atlas  (auto-injected by the Netlify integration above)
+#   MONGODB_URI                               mongodb+srv://...
+#   MONGODB_DB                                achievhq
