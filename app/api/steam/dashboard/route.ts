@@ -49,6 +49,19 @@ export async function GET(request: Request) {
     if (msg === "Unauthorized") {
       return NextResponse.json({ error: msg }, { status: 401 });
     }
+    // Surface actionable config errors so the client can show them directly
+    if (msg.includes("STEAM_API_KEY")) {
+      return NextResponse.json(
+        { error: "STEAM_API_KEY is not set. Add it in Netlify → Environment variables." },
+        { status: 500 },
+      );
+    }
+    if (msg.includes("FIREBASE_SERVICE_ACCOUNT")) {
+      return NextResponse.json(
+        { error: "Firebase service account is not configured. Set FIREBASE_SERVICE_ACCOUNT_JSON in Netlify → Environment variables." },
+        { status: 500 },
+      );
+    }
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

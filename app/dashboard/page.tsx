@@ -98,7 +98,8 @@ function DashboardInner() {
             setData(null);
             return;
           }
-          throw new Error(outcome.error);
+          setError(outcome.error);
+          return;
         }
         const bundle = outcome.bundle;
         if (!cancelled) {
@@ -122,12 +123,12 @@ function DashboardInner() {
           );
           await loadSnapshots();
         }
-      } catch {
+      } catch (e) {
         if (stale) {
           setCached(true);
           setOffline(true);
         } else {
-          setError("Could not load dashboard. Check your connection and API configuration.");
+          setError(e instanceof Error ? e.message : "Could not load dashboard.");
         }
       } finally {
         if (!cancelled) setLoading(false);

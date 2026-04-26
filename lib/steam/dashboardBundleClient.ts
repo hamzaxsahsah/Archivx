@@ -35,8 +35,26 @@ export async function loadDashboardBundle(
   if (inflight) return inflight;
 
   inflight = (async (): Promise<DashboardFetchResult> => {
-    const res = await authedFetch("/api/steam/dashboard");
-    const j = (await res.json()) as { error?: string } | DashboardBundle;
+    let res: Response;
+    try {
+      res = await authedFetch("/api/steam/dashboard");
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Network error" };
+    }
+
+    // Netlify / proxies may return an HTML error page on 502/504 — guard JSON parse
+    let j: { error?: string } | DashboardBundle;
+    try {
+      j = (await res.json()) as { error?: string } | DashboardBundle;
+    } catch {
+      return {
+        ok: false,
+        error: res.status === 502 || res.status === 504
+          ? `Gateway timeout (${res.status}) — first load for large libraries can exceed Netlify's function limit. Try refreshing.`
+          : `Server returned HTTP ${res.status} with non-JSON body.`,
+      };
+    }
+
     if (!res.ok) {
       if (res.status === 400 && (j as { error?: string }).error === "STEAM_NOT_LINKED") {
         return { ok: false, notLinked: true };
