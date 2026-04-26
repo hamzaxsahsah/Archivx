@@ -69,36 +69,43 @@ export async function ensureMongoUserFromFirestore(uid: string): Promise<void> {
 }
 
 export async function getSteamIdMongoFirst(uid: string): Promise<string | null> {
-  await ensureMongoUserFromFirestore(uid);
+  // Fast path: no Mongo configured → Firestore only
   if (!isMongoConfigured()) {
     const snap = await adminDb().doc(`users/${uid}`).get();
     if (!snap.exists) return null;
-    const d = snap.data() as { steamId?: string | null };
-    return d.steamId ?? null;
+    return ((snap.data() as { steamId?: string | null }).steamId) ?? null;
   }
+
   const col = await usersColl();
   if (!col) {
+    // Mongo unavailable (connection failed) → Firestore fallback
     const snap = await adminDb().doc(`users/${uid}`).get();
     if (!snap.exists) return null;
-    return ((snap.data() as { steamId?: string | null }).steamId ?? null) || null;
+    return ((snap.data() as { steamId?: string | null }).steamId) ?? null;
   }
+
+  // Single findOne — covers both "user exists in Mongo" and "needs hydration"
   const u = await col.findOne({ firebaseUid: uid });
   if (u?.steamId) return u.steamId;
+
+  // Not in Mongo yet — fetch from Firestore and backfill (fire-and-forget write)
   const snap = await adminDb().doc(`users/${uid}`).get();
   if (!snap.exists) return null;
-  const d = snap.data() as { steamId?: string | null };
+  const d = snap.data() as { steamId?: string | null; email?: string; displayName?: string; photoURL?: string };
   const sid = d.steamId ?? null;
   if (sid) {
-    await col.updateOne(
+    const now = new Date();
+    void col.updateOne(
       { firebaseUid: uid },
       {
-        $set: { steamId: sid, updatedAt: new Date() },
+        $set: { steamId: sid, updatedAt: now },
         $setOnInsert: {
           firebaseUid: uid,
-          email: (d as { email?: string }).email ?? null,
-          displayName: (d as { displayName?: string }).displayName ?? null,
-          photoURL: (d as { photoURL?: string }).photoURL ?? null,
-          createdAt: new Date(),
+          email: d.email ?? null,
+          displayName: d.displayName ?? null,
+          photoURL: d.photoURL ?? null,
+          createdAt: now,
+          migratedFromFirestoreAt: now,
         },
       },
       { upsert: true },
