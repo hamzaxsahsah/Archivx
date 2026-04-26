@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUidFromRequest } from "@/lib/authServer";
-import { isFriend, removeFriend } from "@/lib/friendsAdmin";
+import { isFriend, removeFriend } from "@/lib/friends/friendsAdmin";
 
 export async function DELETE(
   request: Request,

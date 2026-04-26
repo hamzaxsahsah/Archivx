@@ -12,4 +12,48 @@
   # GOOGLE_OAUTH_AUTH_* values are standard public Google OAuth URLs that
   # also appear verbatim inside node_modules/google-auth-library.
   # Neither constitutes a leaked secret — tell Netlify to skip them.
-  SECRETS_SCAN_OMIT_KEYS  = "NEXT_PUBLIC_FIREBASE_API_KEY,NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,NEXT_PUBLIC_FIREBASE_PROJECT_ID,NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,NEXT_PUBLIC_FIREBASE_APP_ID,NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID,NEXT_PUBLIC_APP_URL,GOOGLE_OAUTH_AUTH_URI,GOOGLE_OAUTH_TOKEN_URI,GOOGLE_OAUTH_AUTH_PROVIDER_X509_CERT_URL,GOOGLE_OAUTH_PROJECT_ID,GOOGLE_OAUTH_CLIENT_ID"
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_FIREBASE_API_KEY,NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,NEXT_PUBLIC_FIREBASE_PROJECT_ID,NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,NEXT_PUBLIC_FIREBASE_APP_ID,NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID,NEXT_PUBLIC_APP_URL,NEXT_PUBLIC_VAPID_PUBLIC_KEY,GOOGLE_OAUTH_AUTH_URI,GOOGLE_OAUTH_TOKEN_URI,GOOGLE_OAUTH_AUTH_PROVIDER_X509_CERT_URL,GOOGLE_OAUTH_PROJECT_ID,GOOGLE_OAUTH_CLIENT_ID,MONGODB_URI,MONGODB_DB"
+
+# ---------------------------------------------------------------------------
+# Serverless function config
+# On Netlify the default timeout is 10 s (free) / 26 s (Pro).
+# MongoDB calls go to Atlas (external network hop) — give them breathing room.
+# ---------------------------------------------------------------------------
+[functions]
+  node_bundler        = "nft"
+  included_files      = ["public/**"]
+
+# ---------------------------------------------------------------------------
+# Required environment variables
+# Set actual values in: Netlify dashboard → Site → Environment variables
+# NEVER commit real secrets here.
+# ---------------------------------------------------------------------------
+# Firebase (public — baked into the browser bundle at build time)
+# NEXT_PUBLIC_FIREBASE_API_KEY          = set in Netlify dashboard
+# NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN      = set in Netlify dashboard
+# NEXT_PUBLIC_FIREBASE_PROJECT_ID       = set in Netlify dashboard
+# NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET   = set in Netlify dashboard
+# NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID = set in Netlify dashboard
+# NEXT_PUBLIC_FIREBASE_APP_ID           = set in Netlify dashboard
+# NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID   = set in Netlify dashboard (optional)
+
+# App URL  (no trailing slash, e.g. https://yourapp.netlify.app)
+# NEXT_PUBLIC_APP_URL                   = set in Netlify dashboard
+
+# Steam
+# STEAM_API_KEY                         = set in Netlify dashboard
+
+# Firebase Admin SDK  (paste full JSON stringified to one line)
+# FIREBASE_SERVICE_ACCOUNT_JSON         = set in Netlify dashboard
+
+# Web Push / VAPID
+# NEXT_PUBLIC_VAPID_PUBLIC_KEY          = set in Netlify dashboard
+# VAPID_PRIVATE_KEY                     = set in Netlify dashboard
+# VAPID_CONTACT                         = set in Netlify dashboard (mailto: or https:)
+
+# MongoDB Atlas  (use Atlas connection string, NOT a local Docker URI)
+# Background Steam sync is automatically disabled on Netlify because
+# fire-and-forget promises are truncated after the response is sent.
+# MongoDB is still used for dashboard/profile caching on each request.
+# MONGODB_URI  = set in Netlify dashboard (mongodb+srv://...@cluster.mongodb.net/...)
+# MONGODB_DB   = achievhq

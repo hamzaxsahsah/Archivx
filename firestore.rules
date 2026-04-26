@@ -11,9 +11,25 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    /* Web Push subscription docs — Firebase Admin / API routes only */
+    match /webPushSubscriptions/{id} {
+      allow read, write: if false;
+    }
+
     /* Friend chat — server (Admin SDK) only; clients use /api/friends/... */
     match /friendChats/{pairId}/messages/{messageId} {
       allow read, write: if false;
+    }
+
+    /* Co-op lobbies — all writes via Admin SDK; reads authenticated only */
+    match /achievementLobbies/{lobbyId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+      match /messages/{messageId} {
+        allow read: if request.auth != null
+          && resource.data.authorUid != null;
+        allow write: if false;
+      }
     }
   }
 }

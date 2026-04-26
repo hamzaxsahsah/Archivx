@@ -1,4 +1,7 @@
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
+import { adminAuth } from "@/lib/firebaseAdmin";
+import { getSteamIdMongoFirst } from "@/lib/db/mongoStore";
+
+const inflightSteamId = new Map<string, Promise<string | null>>();
 
 export async function requireUidFromRequest(request: Request): Promise<string> {
   const h = request.headers.get("authorization");
@@ -10,9 +13,14 @@ export async function requireUidFromRequest(request: Request): Promise<string> {
   return decoded.uid;
 }
 
+/** Prefer MongoDB (synced profile); hydrate from Firestore when needed. */
 export async function getSteamIdForUid(uid: string): Promise<string | null> {
-  const snap = await adminDb().doc(`users/${uid}`).get();
-  if (!snap.exists) return null;
-  const d = snap.data() as { steamId?: string | null };
-  return d.steamId ?? null;
+  let p = inflightSteamId.get(uid);
+  if (!p) {
+    p = getSteamIdMongoFirst(uid).finally(() => {
+      inflightSteamId.delete(uid);
+    });
+    inflightSteamId.set(uid, p);
+  }
+  return p;
 }

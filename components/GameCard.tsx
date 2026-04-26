@@ -3,9 +3,9 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import type { PerGameProgress } from "@/lib/dashboardStats";
-import { ProgressBar } from "@/components/ProgressBar";
-import { steamCommunityIconUrl, steamLibraryCapsuleUrl } from "@/lib/steamImages";
+import type { PerGameProgress } from "@/lib/steam/dashboardStats";
+import { ProgressBar } from "@/components/ui/ProgressBar";
+import { steamCommunityIconUrl, steamLibraryCapsuleUrl } from "@/lib/steam/steamImages";
 
 function GameCoverImage({
   appid,

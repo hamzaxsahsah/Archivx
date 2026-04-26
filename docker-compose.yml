@@ -1,0 +1,28 @@
+# Local / single-server deploy: web + MongoDB (same Docker network).
+# Provide env via .env.docker or export: FIREBASE_* , STEAM_API_KEY , NEXT_PUBLIC_* .
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    command: ["mongod", "--quiet", "--bind_ip_all"]
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/achievhq
+      MONGODB_DB: achievhq
+      NODE_ENV: production
+
+volumes:
+  mongo_data:

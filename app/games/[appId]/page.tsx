@@ -8,12 +8,12 @@ import { authedFetch } from "@/lib/apiClient";
 import {
   AchievementCard,
   type AchievementRowView,
-} from "@/components/AchievementCard";
-import { steamGameBannerUrls } from "@/lib/steamImages";
-import { RequireAuth } from "@/components/RequireAuth";
-import { SkeletonList } from "@/components/SkeletonCard";
-import { ProgressBar } from "@/components/ProgressBar";
-import { PaginationBar } from "@/components/PaginationBar";
+} from "@/components/achievements/AchievementCard";
+import { steamGameBannerUrls } from "@/lib/steam/steamImages";
+import { RequireAuth } from "@/components/layout/RequireAuth";
+import { SkeletonList } from "@/components/ui/SkeletonCard";
+import { ProgressBar } from "@/components/ui/ProgressBar";
+import { PaginationBar } from "@/components/ui/PaginationBar";
 
 type FilterMode = "all" | "unlocked" | "locked";
 
@@ -251,7 +251,7 @@ function GameDetailInner() {
 
       <div className="space-y-3">
         {pagedAch.map((r) => (
-          <AchievementCard key={r.apiname} appId={appId} row={r} />
+          <AchievementCard key={r.apiname} appId={appId} gameName={gameName} row={r} />
         ))}
       </div>
       {filtered.length === 0 ? (

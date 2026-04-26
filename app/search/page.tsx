@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { authedFetch } from "@/lib/apiClient";
-import type { SearchRow } from "@/lib/achievementQueries";
-import { RequireAuth } from "@/components/RequireAuth";
-import { RarityBadge } from "@/components/RarityBadge";
-import { PaginationBar } from "@/components/PaginationBar";
+import type { SearchRow } from "@/lib/steam/achievementQueries";
+import { RequireAuth } from "@/components/layout/RequireAuth";
+import { RarityBadge } from "@/components/ui/RarityBadge";
+import { PaginationBar } from "@/components/ui/PaginationBar";
 
 export default function SearchPage() {
   return (

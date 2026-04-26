@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { upsertUserSteamId } from "@/lib/db/mongoStore";
+import { scheduleBackgroundSteamSync } from "@/lib/steam/steamSync";
 import { verifySteamOpenIdAssertion } from "@/lib/steamVerify";
 import { extractSteam64FromClaimedId } from "@/lib/steamOpenId";
 import type { Timestamp as Ts } from "firebase-admin/firestore";
@@ -62,7 +64,9 @@ export async function GET(request: Request) {
     await adminDb()
       .doc(`users/${data.uid}`)
       .set({ steamId }, { merge: true });
+    await upsertUserSteamId(data.uid, steamId);
     await adminDb().collection("steamLinkStates").doc(state).delete();
+    scheduleBackgroundSteamSync(data.uid, steamId);
   } catch {
     return fail("server");
   }

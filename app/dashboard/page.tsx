@@ -13,20 +13,21 @@ import {
 import { getDb, getAuthClient } from "@/lib/firebase";
 import {
   loadDashboardBundle,
-} from "@/lib/dashboardBundleClient";
-import type { DashboardBundle, MostPlayedRow, RecentUnlock } from "@/lib/dashboardStats";
+} from "@/lib/steam/dashboardBundleClient";
+import type { DashboardBundle, MostPlayedRow, RecentUnlock } from "@/lib/steam/dashboardStats";
 import { readCache, writeCache } from "@/lib/offlineCache";
 import { useSteamStore } from "@/lib/store";
-import { RequireAuth } from "@/components/RequireAuth";
-import type { SnapshotPoint } from "@/components/ProgressChart";
-import { SkeletonCard } from "@/components/SkeletonCard";
-import { PaginationBar } from "@/components/PaginationBar";
-import { RankBadge } from "@/components/RankBadge";
-import { CompletionRing } from "@/components/CompletionRing";
+import { AchievementGuidePanel } from "@/components/achievements/AchievementGuidePanel";
+import { RequireAuth } from "@/components/layout/RequireAuth";
+import type { SnapshotPoint } from "@/components/ui/ProgressChart";
+import { SkeletonCard } from "@/components/ui/SkeletonCard";
+import { PaginationBar } from "@/components/ui/PaginationBar";
+import { RankBadge } from "@/components/ui/RankBadge";
+import { CompletionRing } from "@/components/ui/CompletionRing";
 
 /** Recharts pulls browser-only APIs; SSR + dev HMR can trigger obscure webpack `JSON.parse` / `.call` errors. */
 const ProgressChartLazy = dynamic(
-  () => import("@/components/ProgressChart").then((m) => m.ProgressChart),
+  () => import("@/components/ui/ProgressChart").then((m) => m.ProgressChart),
   {
     ssr: false,
     loading: () => (
@@ -56,6 +57,7 @@ function DashboardInner() {
   const [cached, setCached] = useState(false);
   const [pageRecent, setPageRecent] = useState(1);
   const [pageMost, setPageMost] = useState(1);
+  const [expandedUnlock, setExpandedUnlock] = useState<string | null>(null);
 
   const loadSnapshots = useCallback(async () => {
     const u = getAuthClient().currentUser;
@@ -77,7 +79,15 @@ function DashboardInner() {
     (async () => {
       const u = getAuthClient().currentUser;
       if (!u) return;
-      setLoading(true);
+
+      const stale = readCache<DashboardBundle>(`dash:${u.uid}`);
+      if (stale && !cancelled) {
+        setData(stale);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+
       setError(null);
       try {
         const key = `${u.uid}:${profile?.steamId ?? ""}`;
@@ -113,9 +123,7 @@ function DashboardInner() {
           await loadSnapshots();
         }
       } catch {
-        const fallback = readCache<DashboardBundle>(`dash:${u.uid}`);
-        if (fallback) {
-          setData(fallback);
+        if (stale) {
           setCached(true);
           setOffline(true);
         } else {
@@ -129,10 +137,6 @@ function DashboardInner() {
       cancelled = true;
     };
   }, [loadSnapshots, profile?.steamId, setOffline]);
-
-  useEffect(() => {
-    loadSnapshots();
-  }, [loadSnapshots]);
 
   useEffect(() => {
     setPageRecent(1);
@@ -258,24 +262,48 @@ function DashboardInner() {
             onPageChange={setPageRecent}
             className="mb-3"
           />
-          <ul className="space-y-3">
+          <ul className="space-y-1">
             {data.recentUnlocks.length === 0 ? (
               <li className="text-sm text-zinc-500">No recent unlocks found.</li>
             ) : (
-              recentSlice.items.map((r) => (
-                <li
-                  key={`${r.appid}-${r.apiname}-${r.unlocktime}`}
-                  className="flex flex-col gap-0.5 border-b border-white/5 pb-3 last:border-0 sm:flex-row sm:items-start sm:justify-between sm:gap-3"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate font-display text-sm text-white">{r.displayName}</p>
-                    <p className="truncate font-mono text-xs text-zinc-500">{r.gameName}</p>
-                  </div>
-                  <span className="shrink-0 font-mono text-xs text-accent">
-                    {new Date(r.unlocktime * 1000).toLocaleDateString()}
-                  </span>
-                </li>
-              ))
+              recentSlice.items.map((r) => {
+                const itemKey = `${r.appid}-${r.apiname}-${r.unlocktime}`;
+                const expanded = expandedUnlock === itemKey;
+                return (
+                  <li
+                    key={itemKey}
+                    className="rounded-lg border border-transparent transition hover:border-white/5 hover:bg-white/3"
+                  >
+                    <div className="flex items-center gap-2 px-1 py-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-display text-sm text-white">{r.displayName}</p>
+                        <p className="truncate font-mono text-xs text-zinc-500">{r.gameName}</p>
+                      </div>
+                      <span className="shrink-0 font-mono text-xs text-accent">
+                        {new Date(r.unlocktime * 1000).toLocaleDateString()}
+                      </span>
+                      <button
+                        onClick={() => setExpandedUnlock(expanded ? null : itemKey)}
+                        aria-label={expanded ? "Collapse guide" : "Show guide"}
+                        className="shrink-0 rounded-lg p-1 text-zinc-500 transition hover:bg-white/10 hover:text-white"
+                      >
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+                        >
+                          <path d="m6 9 6 6 6-6" />
+                        </svg>
+                      </button>
+                    </div>
+                    {expanded && <AchievementGuidePanel achievement={r} />}
+                  </li>
+                );
+              })
             )}
           </ul>
         </div>

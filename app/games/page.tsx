@@ -2,14 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { loadDashboardBundle } from "@/lib/dashboardBundleClient";
-import type { DashboardBundle } from "@/lib/dashboardStats";
+import { loadDashboardBundle } from "@/lib/steam/dashboardBundleClient";
+import type { DashboardBundle } from "@/lib/steam/dashboardStats";
 import { getAuthClient } from "@/lib/firebase";
+import { readCache } from "@/lib/offlineCache";
 import { useSteamStore } from "@/lib/store";
 import { GameCard } from "@/components/GameCard";
-import { RequireAuth } from "@/components/RequireAuth";
-import { SkeletonCard } from "@/components/SkeletonCard";
-import { PaginationBar } from "@/components/PaginationBar";
+import { RequireAuth } from "@/components/layout/RequireAuth";
+import { SkeletonCard } from "@/components/ui/SkeletonCard";
+import { PaginationBar } from "@/components/ui/PaginationBar";
 
 type Filter = "all" | "completed" | "progress" | "notstarted";
 type SortKey = "playtime" | "completion" | "lastplayed" | "name";
@@ -37,13 +38,21 @@ function GamesInner() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      setLoading(true);
+      const u = getAuthClient().currentUser;
+      if (!u) {
+        if (!cancelled) setError("LOAD");
+        return;
+      }
+
+      const stale = readCache<DashboardBundle>(`dash:${u.uid}`);
+      if (stale && !cancelled) {
+        setBundle(stale);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+
       try {
-        const u = getAuthClient().currentUser;
-        if (!u) {
-          if (!cancelled) setError("LOAD");
-          return;
-        }
         const key = `${u.uid}:${profile?.steamId ?? ""}`;
         const outcome = await loadDashboardBundle(key);
         if (!outcome.ok) {
@@ -55,7 +64,7 @@ function GamesInner() {
         }
         if (!cancelled) setBundle(outcome.bundle);
       } catch {
-        if (!cancelled) setError("LOAD");
+        if (!stale && !cancelled) setError("LOAD");
       } finally {
         if (!cancelled) setLoading(false);
       }

@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { authedFetch } from "@/lib/apiClient";
-import type { RareRow } from "@/lib/achievementQueries";
-import { RequireAuth } from "@/components/RequireAuth";
-import { RarityBadge } from "@/components/RarityBadge";
-import { SkeletonList } from "@/components/SkeletonCard";
-import { PaginationBar } from "@/components/PaginationBar";
-import { steamAchievementIconUrl } from "@/lib/steamImages";
+import type { RareRow } from "@/lib/steam/achievementQueries";
+import { RequireAuth } from "@/components/layout/RequireAuth";
+import { RarityBadge } from "@/components/ui/RarityBadge";
+import { SkeletonList } from "@/components/ui/SkeletonCard";
+import { PaginationBar } from "@/components/ui/PaginationBar";
+import { steamAchievementIconUrl } from "@/lib/steam/steamImages";
+import { AchievementGuidePanel } from "@/components/achievements/AchievementGuidePanel";
 
 export default function RarePage() {
   return (
@@ -26,6 +27,7 @@ function RareInner() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,42 +92,73 @@ function RareInner() {
         className="mb-2"
       />
       <ul className="space-y-3">
-        {paged.map((r) => (
-          <li
-            key={`${r.appid}-${r.apiname}`}
-            className={`flex items-center gap-3 rounded-xl border p-3 transition sm:gap-4 sm:p-4 ${
-              r.rarityPct !== null && r.rarityPct < 5
-                ? "border-gold/30 bg-surface hover:border-gold/50 hover:shadow-glow-gold"
-                : "border-border bg-surface hover:border-white/10"
-            }`}
-          >
-            <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-black/40 sm:h-14 sm:w-14">
-              {r.icon ? (
-                <Image
-                  src={steamAchievementIconUrl(r.appid, r.icon)}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="56px"
-                  quality={90}
-                />
-              ) : null}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-display text-sm font-semibold text-white">{r.displayName}</p>
-              <p className="truncate font-mono text-xs text-zinc-500">{r.gameName}</p>
-              <div className="mt-1.5">
-                <RarityBadge percent={r.rarityPct} />
-              </div>
-            </div>
-            <Link
-              href={`/games/${r.appid}`}
-              className="shrink-0 self-center text-xs text-accent underline"
+        {paged.map((r) => {
+          const itemKey = `${r.appid}-${r.apiname}`;
+          const expanded = expandedKey === itemKey;
+          return (
+            <li
+              key={itemKey}
+              className={`rounded-xl border transition ${
+                r.rarityPct !== null && r.rarityPct < 5
+                  ? "border-gold/30 bg-surface"
+                  : "border-border bg-surface"
+              }`}
             >
-              View
-            </Link>
-          </li>
-        ))}
+              {/* row */}
+              <div className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4">
+                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-black/40 sm:h-14 sm:w-14">
+                  {r.icon ? (
+                    <Image
+                      src={steamAchievementIconUrl(r.appid, r.icon)}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      sizes="56px"
+                      quality={90}
+                    />
+                  ) : null}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-display text-sm font-semibold text-white">
+                    {r.displayName}
+                  </p>
+                  <p className="truncate font-mono text-xs text-zinc-500">{r.gameName}</p>
+                  <div className="mt-1.5">
+                    <RarityBadge percent={r.rarityPct} />
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <Link
+                    href={`/games/${r.appid}`}
+                    className="text-xs text-accent underline"
+                  >
+                    View
+                  </Link>
+                  <button
+                    onClick={() => setExpandedKey(expanded ? null : itemKey)}
+                    aria-label={expanded ? "Collapse guide" : "Show guide"}
+                    className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+                    >
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* inline guide panel */}
+              {expanded && <AchievementGuidePanel achievement={r} />}
+            </li>
+          );
+        })}
       </ul>
       {rows.length === 0 ? (
         <p className="text-center font-mono text-sm text-zinc-500">

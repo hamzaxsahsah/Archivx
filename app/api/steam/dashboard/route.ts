@@ -1,10 +1,15 @@
-import { unstable_cache } from "next/cache";
 import { NextResponse } from "next/server";
 import { requireUidFromRequest, getSteamIdForUid } from "@/lib/authServer";
-import { buildDashboardBundle } from "@/lib/dashboardStats";
+import { getCachedSteamDashboardBundle } from "@/lib/steam/dashboardCache";
+import { isMongoConfigured } from "@/lib/db/mongo";
+import {
+  getSteamDashboardCache,
+  saveSteamDashboardCache,
+} from "@/lib/db/mongoStore";
+import { scheduleBackgroundSteamSync, syncDashboardBundleToMongo } from "@/lib/steam/steamSync";
 
-/** Steam work is huge (every game × 3 API calls). Cache per Steam ID for a short window. */
-const REVALIDATE_SEC = 90;
+/** Return Mongo cache immediately if younger than this; older caches still returned + background refresh. */
+const MONGO_FRESH_MS = 10 * 60 * 1000;
 
 export async function GET(request: Request) {
   try {
@@ -13,11 +18,31 @@ export async function GET(request: Request) {
     if (!steamId) {
       return NextResponse.json({ error: "STEAM_NOT_LINKED" }, { status: 400 });
     }
-    const bundle = await unstable_cache(
-      () => buildDashboardBundle(steamId),
-      ["steam-dashboard-bundle", steamId],
-      { revalidate: REVALIDATE_SEC, tags: [`steam-dashboard-${steamId}`] },
-    )();
+
+    if (isMongoConfigured()) {
+      const cached = await getSteamDashboardCache(uid);
+      if (cached?.bundle && cached.steamId === steamId) {
+        const age = Date.now() - new Date(cached.syncedAt).getTime();
+        if (age > MONGO_FRESH_MS) {
+          scheduleBackgroundSteamSync(uid, steamId);
+        }
+        return NextResponse.json(cached.bundle);
+      }
+      try {
+        await syncDashboardBundleToMongo(uid, steamId);
+      } catch {
+        /* fall through to live build */
+      }
+      const after = await getSteamDashboardCache(uid);
+      if (after?.bundle) {
+        return NextResponse.json(after.bundle);
+      }
+      const bundle = await getCachedSteamDashboardBundle(steamId);
+      await saveSteamDashboardCache(uid, steamId, bundle);
+      return NextResponse.json(bundle);
+    }
+
+    const bundle = await getCachedSteamDashboardBundle(steamId);
     return NextResponse.json(bundle);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Error";

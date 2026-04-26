@@ -14,6 +14,7 @@ const links = [
   { href: "/games", label: "Library" },
   { href: "/rare", label: "Rare" },
   { href: "/search", label: "Search" },
+  { href: "/lobby", label: "Lobbies" },
   { href: "/friends", label: "Friends" },
   { href: "/settings", label: "Settings" },
 ];

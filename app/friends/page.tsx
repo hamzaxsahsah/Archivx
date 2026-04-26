@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { authedFetch } from "@/lib/apiClient";
-import { RequireAuth } from "@/components/RequireAuth";
+import { RequireAuth } from "@/components/layout/RequireAuth";
 
 type Card = {
   uid: string;
@@ -14,15 +15,29 @@ type Card = {
 
 type RequestRow = Card & { createdAt: number };
 
+function FriendsSuspenseFallback() {
+  return (
+    <div className="space-y-4">
+      <div className="h-10 w-48 animate-pulse rounded-lg bg-white/5" />
+      <div className="h-32 animate-pulse rounded-2xl bg-white/5" />
+    </div>
+  );
+}
+
 export default function FriendsPage() {
   return (
     <RequireAuth>
-      <FriendsInner />
+      <Suspense fallback={<FriendsSuspenseFallback />}>
+        <FriendsInner />
+      </Suspense>
     </RequireAuth>
   );
 }
 
 function FriendsInner() {
+  const searchParams = useSearchParams();
+  const highlightFromUid = searchParams.get("from");
+
   const [friends, setFriends] = useState<Card[]>([]);
   const [incoming, setIncoming] = useState<RequestRow[]>([]);
   const [outgoing, setOutgoing] = useState<RequestRow[]>([]);
@@ -58,6 +73,18 @@ function FriendsInner() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!highlightFromUid || loading) return;
+    const el = document.getElementById(`incoming-${highlightFromUid}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("ring-2", "ring-accent/60", "border-accent/40");
+    const t = window.setTimeout(() => {
+      el.classList.remove("ring-2", "ring-accent/60", "border-accent/40");
+    }, 4000);
+    return () => window.clearTimeout(t);
+  }, [highlightFromUid, loading, incoming]);
 
   const sendRequest = async () => {
     const id = targetUid.trim();
@@ -165,13 +192,14 @@ function FriendsInner() {
       </section>
 
       {incoming.length > 0 ? (
-        <section className="glass-panel space-y-3">
+        <section id="incoming-requests" className="glass-panel space-y-3">
           <h2 className="font-display text-lg font-semibold text-white">Incoming requests</h2>
           <ul className="space-y-2">
             {incoming.map((r) => (
               <li
                 key={r.uid}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface/40 px-4 py-3"
+                id={`incoming-${r.uid}`}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface/40 px-4 py-3 transition-[box-shadow,border-color] duration-300"
               >
                 <div>
                   <p className="font-display text-sm text-white">{r.displayName ?? r.uid}</p>

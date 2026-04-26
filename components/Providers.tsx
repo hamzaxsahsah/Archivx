@@ -5,7 +5,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { getAuthClient } from "@/lib/firebase";
 import { fetchUserProfile } from "@/lib/firebase";
 import { useSteamStore } from "@/lib/store";
-import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { ServiceWorkerRegister } from "@/components/layout/ServiceWorkerRegister";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const setUser = useSteamStore((s) => s.setUser);

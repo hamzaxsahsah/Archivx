@@ -1,5 +1,6 @@
 import { Timestamp } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { notifyFriendRequestReceived } from "@/lib/friends/notifyFriendRequestPush";
 
 export function friendPairId(uidA: string, uidB: string): string {
   return [uidA, uidB].sort().join("__");
@@ -110,6 +111,9 @@ export async function sendFriendRequest(
     createdAt: Timestamp.now(),
   });
   await batch.commit();
+  void notifyFriendRequestReceived(toUid, fromCard).catch((err) => {
+    console.error("[friends] friend-request push failed", err);
+  });
   return { ok: true };
 }
 

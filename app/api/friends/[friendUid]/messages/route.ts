@@ -5,7 +5,7 @@ import {
   isFriend,
   listFriendMessages,
   postFriendMessage,
-} from "@/lib/friendsAdmin";
+} from "@/lib/friends/friendsAdmin";
 
 const MAX_LEN = 2000;
 

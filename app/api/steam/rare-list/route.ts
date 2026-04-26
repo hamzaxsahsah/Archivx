@@ -1,9 +1,6 @@
-import { unstable_cache } from "next/cache";
 import { NextResponse } from "next/server";
 import { requireUidFromRequest, getSteamIdForUid } from "@/lib/authServer";
-import { buildRareAchievements } from "@/lib/achievementQueries";
-
-const REVALIDATE_SEC = 120;
+import { getCachedSteamDashboardBundle } from "@/lib/steam/dashboardCache";
 
 export async function GET(request: Request) {
   try {
@@ -12,12 +9,8 @@ export async function GET(request: Request) {
     if (!steamId) {
       return NextResponse.json({ error: "STEAM_NOT_LINKED" }, { status: 400 });
     }
-    const rows = await unstable_cache(
-      () => buildRareAchievements(steamId),
-      ["steam-rare-achievements", steamId],
-      { revalidate: REVALIDATE_SEC, tags: [`steam-rare-${steamId}`] },
-    )();
-    return NextResponse.json({ achievements: rows });
+    const bundle = await getCachedSteamDashboardBundle(steamId);
+    return NextResponse.json({ achievements: bundle.rareList ?? [] });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Error";
     if (msg === "Unauthorized") {

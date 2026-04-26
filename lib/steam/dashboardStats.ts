@@ -38,6 +38,16 @@ export type PerGameProgress = {
   completionPct: number;
 };
 
+export type RareAchievement = {
+  appid: number;
+  gameName: string;
+  apiname: string;
+  displayName: string;
+  icon: string;
+  rarityPct: number;
+  unlocktime: number | null;
+};
+
 export type DashboardBundle = {
   gamesOwned: number;
   totalUnlocked: number;
@@ -47,15 +57,17 @@ export type DashboardBundle = {
   recentUnlocks: RecentUnlock[];
   mostPlayed: MostPlayedRow[];
   perGame: PerGameProgress[];
+  rareList: RareAchievement[];
   privateProfile: boolean;
 };
 
-const BATCH = 5;
+const BATCH = 12;
 
 type OneGame = {
   progress: PerGameProgress;
   recent: RecentUnlock[];
   rareAdded: number;
+  rareItems: RareAchievement[];
 };
 
 async function processGame(steamId: string, g: OwnedGameSteam): Promise<OneGame> {
@@ -72,14 +84,22 @@ async function processGame(steamId: string, g: OwnedGameSteam): Promise<OneGame>
     completionPct: 0,
   };
 
+  if (g.playtime_forever === 0) {
+    return { progress: emptyProgress, recent: [], rareAdded: 0, rareItems: [] };
+  }
+
   try {
-    const [schemaJson, playerJson, globalJson] = await Promise.all([
-      steamGetSchemaForGame(appid),
+    const schemaJson = await steamGetSchemaForGame(appid);
+    const list = schemaJson.game?.availableGameStats?.achievements ?? [];
+    if (list.length === 0) {
+      return { progress: emptyProgress, recent: [], rareAdded: 0, rareItems: [] };
+    }
+
+    const [playerJson, globalJson] = await Promise.all([
       steamGetPlayerAchievements(steamId, appid),
       steamGetGlobalAchievementPercentages(appid),
     ]);
 
-    const list = schemaJson.game?.availableGameStats?.achievements ?? [];
     const globalMap = new Map<string, number>();
     const ga = globalJson.achievementpercentages?.achievements;
     if (ga) {
@@ -104,6 +124,7 @@ async function processGame(steamId: string, g: OwnedGameSteam): Promise<OneGame>
 
     let unlocked = 0;
     const recent: RecentUnlock[] = [];
+    const rareItems: RareAchievement[] = [];
     let rareAdded = 0;
 
     if (list.length) {
@@ -119,7 +140,18 @@ async function processGame(steamId: string, g: OwnedGameSteam): Promise<OneGame>
         const sch = byName.get(a.apiname);
         const disp = sch?.displayName ?? a.apiname;
         const pct = globalMap.get(a.apiname);
-        if (pct != null && pct < 5) rareAdded++;
+        if (pct != null && pct < 5) {
+          rareAdded++;
+          rareItems.push({
+            appid,
+            gameName: g.name,
+            apiname: a.apiname,
+            displayName: disp,
+            icon: sch?.icon ?? "",
+            rarityPct: pct,
+            unlocktime: a.unlocktime ?? null,
+          });
+        }
         if (a.unlocktime) {
           recent.push({
             appid,
@@ -148,9 +180,10 @@ async function processGame(steamId: string, g: OwnedGameSteam): Promise<OneGame>
       },
       recent,
       rareAdded,
+      rareItems,
     };
   } catch {
-    return { progress: emptyProgress, recent: [], rareAdded: 0 };
+    return { progress: emptyProgress, recent: [], rareAdded: 0, rareItems: [] };
   }
 }
 
@@ -167,12 +200,14 @@ export async function buildDashboardBundle(steamId: string): Promise<DashboardBu
       recentUnlocks: [],
       mostPlayed: [],
       perGame: [],
+      rareList: [],
       privateProfile: true,
     };
   }
 
   const perGame: PerGameProgress[] = [];
   const allRecent: RecentUnlock[] = [];
+  const allRare: RareAchievement[] = [];
   let rareUnlocked = 0;
 
   for (let i = 0; i < games.length; i += BATCH) {
@@ -182,6 +217,7 @@ export async function buildDashboardBundle(steamId: string): Promise<DashboardBu
       perGame.push(r.progress);
       allRecent.push(...r.recent);
       rareUnlocked += r.rareAdded;
+      allRare.push(...r.rareItems);
     }
   }
 
@@ -196,6 +232,7 @@ export async function buildDashboardBundle(steamId: string): Promise<DashboardBu
     : 0;
 
   allRecent.sort((a, b) => b.unlocktime - a.unlocktime);
+  allRare.sort((a, b) => a.rarityPct - b.rarityPct);
 
   const mostPlayed = [...perGame]
     .filter((p) => p.total > 0)
@@ -220,6 +257,7 @@ export async function buildDashboardBundle(steamId: string): Promise<DashboardBu
     recentUnlocks: allRecent.slice(0, 20),
     mostPlayed,
     perGame,
+    rareList: allRare,
     privateProfile: false,
   };
 }

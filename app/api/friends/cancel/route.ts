@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUidFromRequest } from "@/lib/authServer";
-import { cancelOutgoing } from "@/lib/friendsAdmin";
+import { cancelOutgoing } from "@/lib/friends/friendsAdmin";
 
 export async function POST(request: Request) {
   try {

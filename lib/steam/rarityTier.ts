@@ -1,18 +1,22 @@
-type Props = {
-  /** Steam / caches may send a string; we coerce for display. */
-  percent: number | string | null | undefined;
-};
+/** Shared rarity tiers (Steam global %) — matches UI badges and push copy. */
 
-function toPercentNumber(p: unknown): number | null {
+export function toPercentNumber(p: unknown): number | null {
   if (p == null || p === "") return null;
   const n = typeof p === "number" ? p : Number(p);
   return Number.isFinite(n) ? n : null;
 }
 
-function tier(p: number | null | undefined) {
+export type RarityTierInfo = {
+  label: string;
+  className: string;
+  icon: string;
+};
+
+export function getRarityTierInfo(percent: number | null | undefined): RarityTierInfo {
+  const p = toPercentNumber(percent);
   if (p == null || Number.isNaN(p)) {
     return {
-      label: "?",
+      label: "Unknown",
       className: "border border-border bg-surface text-zinc-400",
       icon: "·",
     };
@@ -45,19 +49,12 @@ function tier(p: number | null | undefined) {
   };
 }
 
-export function RarityBadge({ percent: percentRaw }: Props) {
-  const percent = toPercentNumber(percentRaw);
-  const t = tier(percent);
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide ${t.className}`}
-      title={percent != null ? `${percent.toFixed(1)}% global` : "Unknown rarity"}
-    >
-      <span aria-hidden>{t.icon}</span>
-      {t.label}
-      {percent != null ? (
-        <span className="opacity-80">({percent.toFixed(1)}%)</span>
-      ) : null}
-    </span>
-  );
+/** Short line for notifications (mirrors badge semantics). */
+export function formatRarityPushLine(percent: number | null | undefined): string {
+  const p = toPercentNumber(percent);
+  const t = getRarityTierInfo(p);
+  if (p != null) {
+    return `${t.icon} ${t.label} · ${p.toFixed(1)}% of players`;
+  }
+  return `${t.icon} ${t.label} · global % unavailable`;
 }

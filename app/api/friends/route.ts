@@ -5,7 +5,7 @@ import {
   listIncomingRequests,
   listOutgoingRequests,
   sendFriendRequest,
-} from "@/lib/friendsAdmin";
+} from "@/lib/friends/friendsAdmin";
 
 export async function GET(request: Request) {
   try {

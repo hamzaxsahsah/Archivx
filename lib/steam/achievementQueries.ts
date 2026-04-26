@@ -5,16 +5,11 @@ import {
   steamGetPlayerAchievements,
   steamGetSchemaForGame,
 } from "@/lib/steamServer";
+import type { RareAchievement } from "@/lib/steam/dashboardStats";
 
-export type RareRow = {
-  appid: number;
-  gameName: string;
-  apiname: string;
-  displayName: string;
-  icon: string;
-  rarityPct: number;
-  unlocktime: number | null;
-};
+export type { RareAchievement };
+/** Alias kept for page imports that reference RareRow */
+export type RareRow = RareAchievement;
 
 export type SearchRow = {
   appid: number;
@@ -26,60 +21,11 @@ export type SearchRow = {
   unlocked: boolean;
 };
 
-const BATCH = 5;
+const BATCH = 12;
 
 async function getGames(steamId: string): Promise<OwnedGameSteam[]> {
   const owned = await steamGetOwnedGames(steamId);
   return owned.response?.games ?? [];
-}
-
-export async function buildRareAchievements(steamId: string): Promise<RareRow[]> {
-  const games = await getGames(steamId);
-  const out: RareRow[] = [];
-
-  for (let i = 0; i < games.length; i += BATCH) {
-    const chunk = games.slice(i, i + BATCH);
-    await Promise.all(
-      chunk.map(async (g) => {
-        try {
-          const [schemaJson, playerJson, globalJson] = await Promise.all([
-            steamGetSchemaForGame(g.appid),
-            steamGetPlayerAchievements(steamId, g.appid),
-            steamGetGlobalAchievementPercentages(g.appid),
-          ]);
-          const list = schemaJson.game?.availableGameStats?.achievements ?? [];
-          const byName = new Map(list.map((s) => [s.name, s]));
-          const globalMap = new Map<string, number>();
-          const ga = globalJson.achievementpercentages?.achievements;
-          if (ga) {
-            for (const x of ga) globalMap.set(x.name, x.percent);
-          }
-          const pa = playerJson.playerstats?.achievements;
-          if (!pa) return;
-          for (const a of pa) {
-            if (a.achieved !== 1) continue;
-            const pct = globalMap.get(a.apiname);
-            if (pct == null || pct >= 5) continue;
-            const sch = byName.get(a.apiname);
-            out.push({
-              appid: g.appid,
-              gameName: g.name,
-              apiname: a.apiname,
-              displayName: sch?.displayName ?? a.apiname,
-              icon: sch?.icon ?? "",
-              rarityPct: pct,
-              unlocktime: a.unlocktime ?? null,
-            });
-          }
-        } catch {
-          /* skip */
-        }
-      }),
-    );
-  }
-
-  out.sort((a, b) => a.rarityPct - b.rarityPct);
-  return out;
 }
 
 export async function searchAchievementNames(
@@ -95,13 +41,16 @@ export async function searchAchievementNames(
     const chunk = games.slice(i, i + BATCH);
     await Promise.all(
       chunk.map(async (g) => {
+        if (g.playtime_forever === 0) return;
         try {
-          const [schemaJson, playerJson, globalJson] = await Promise.all([
-            steamGetSchemaForGame(g.appid),
+          const schemaJson = await steamGetSchemaForGame(g.appid);
+          const list = schemaJson.game?.availableGameStats?.achievements ?? [];
+          if (list.length === 0) return;
+
+          const [playerJson, globalJson] = await Promise.all([
             steamGetPlayerAchievements(steamId, g.appid),
             steamGetGlobalAchievementPercentages(g.appid),
           ]);
-          const list = schemaJson.game?.availableGameStats?.achievements ?? [];
           const byName = new Map(list.map((s) => [s.name, s]));
           const globalMap = new Map<string, number>();
           const ga = globalJson.achievementpercentages?.achievements;

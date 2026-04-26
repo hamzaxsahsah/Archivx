@@ -3,7 +3,7 @@
  * serves a short-lived memory hit when navigating Dashboard ↔ Library.
  */
 import { authedFetch } from "@/lib/apiClient";
-import type { DashboardBundle } from "@/lib/dashboardStats";
+import type { DashboardBundle } from "@/lib/steam/dashboardStats";
 
 const TTL_MS = 300_000;
 

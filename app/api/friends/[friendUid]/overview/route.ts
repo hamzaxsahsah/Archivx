@@ -1,10 +1,7 @@
-import { unstable_cache } from "next/cache";
 import { NextResponse } from "next/server";
 import { getSteamIdForUid, requireUidFromRequest } from "@/lib/authServer";
-import { buildDashboardBundle } from "@/lib/dashboardStats";
-import { getPublicUserCard, isFriend } from "@/lib/friendsAdmin";
-
-const TTL = 120;
+import { getCachedSteamDashboardBundle } from "@/lib/steam/dashboardCache";
+import { getPublicUserCard, isFriend } from "@/lib/friends/friendsAdmin";
 
 export async function GET(
   request: Request,
@@ -32,11 +29,7 @@ export async function GET(
         message: "Friend has not linked Steam yet.",
       });
     }
-    const bundle = await unstable_cache(
-      () => buildDashboardBundle(steamId),
-      ["friend-overview", friendUid],
-      { revalidate: TTL, tags: [`friend-overview-${friendUid}`] },
-    )();
+    const bundle = await getCachedSteamDashboardBundle(steamId);
     return NextResponse.json({
       card,
       steamLinked: true,

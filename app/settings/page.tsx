@@ -2,9 +2,10 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { authedFetch } from "@/lib/apiClient";
-import { invalidateDashboardBundleCache } from "@/lib/dashboardBundleClient";
+import { invalidateDashboardBundleCache } from "@/lib/steam/dashboardBundleClient";
+import { AchievementAlerts } from "@/components/achievements/AchievementAlerts";
 import { SteamLinkButton } from "@/components/SteamLinkButton";
-import { RequireAuth } from "@/components/RequireAuth";
+import { RequireAuth } from "@/components/layout/RequireAuth";
 import { useSteamStore } from "@/lib/store";
 import Image from "next/image";
 import Link from "next/link";
@@ -118,6 +119,11 @@ function SettingsInner() {
             {copied ? "Copied" : "Copy ID"}
           </button>
         </div>
+      </section>
+
+      <section className="glass-panel space-y-4">
+        <h2 className="font-display text-lg font-semibold text-white">Achievement alerts</h2>
+        <AchievementAlerts />
       </section>
 
       <section className="glass-panel space-y-4">

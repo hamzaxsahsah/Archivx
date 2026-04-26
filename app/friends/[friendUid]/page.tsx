@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { authedFetch } from "@/lib/apiClient";
-import { RequireAuth } from "@/components/RequireAuth";
-import { RarityBadge } from "@/components/RarityBadge";
+import { RequireAuth } from "@/components/layout/RequireAuth";
+import { RarityBadge } from "@/components/ui/RarityBadge";
 import { useSteamStore } from "@/lib/store";
 
 type Card = {

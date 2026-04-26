@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUidFromRequest, getSteamIdForUid } from "@/lib/authServer";
-import { searchAchievementNames } from "@/lib/achievementQueries";
+import { searchAchievementNames } from "@/lib/steam/achievementQueries";
 
 export async function GET(request: Request) {
   try {

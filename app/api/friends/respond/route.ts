@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUidFromRequest } from "@/lib/authServer";
-import { respondToRequest } from "@/lib/friendsAdmin";
+import { respondToRequest } from "@/lib/friends/friendsAdmin";
 
 export async function POST(request: Request) {
   try {
